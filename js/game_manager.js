@@ -80,7 +80,17 @@ GameManager.prototype.actuate = function () {
     terminated: this.isGameTerminated()
   });
 
+  this.startMinimax();
+
 };
+
+// Creates a timer for the minimax algorithm
+GameManager.prototype.startMinimax = function () {
+	var manager = this;
+	setTimeout(function(){
+		manager.move(JS_MinimaxBestMove(manager.grid.cells, 8));
+	}, 200);
+}
 
 // Save all tile positions and remove merger info
 GameManager.prototype.prepareTiles = function () {
@@ -140,7 +150,7 @@ GameManager.prototype.move = function (direction) {
           self.score += merged.value;
 
           // The mighty 2048 tile
-          if (merged.value === 2048) self.won = true;
+          //if (merged.value === 2048) self.won = true;
         } else {
           self.moveTile(tile, positions.farthest);
         }
