@@ -88,7 +88,7 @@ GameManager.prototype.actuate = function () {
 GameManager.prototype.startMinimax = function () {
 	var manager = this;
 	setTimeout(function(){
-		manager.move(JS_MinimaxBestMove(manager.grid.cells, 8));
+		manager.move(JS_MinimaxBestMove(manager.grid.cells));
 	}, 200);
 }
 
