@@ -10,14 +10,15 @@ function TileToNumber(tile) {
 	return num;
 }
 
-function JS_MinimaxBestMove(cells, moves) {
+function JS_MinimaxBestMove(cells) {
+	var moves = 5;
 	var map = { 0: 0, 1: 2, 2: 3, 3: 1};
 	var args = [
 	'number', 'number', 'number', 'number',
 	'number', 'number', 'number', 'number',
 	'number', 'number', 'number', 'number',
 	'number', 'number', 'number', 'number',
-	'number', 'number'];
+	'number'];
 	var func = Module.cwrap('JS_MinimaxBestMove', 'number', args);
 	var numbers = [];
 	for(var i = 0; i < 4; ++i) {
@@ -32,7 +33,7 @@ function JS_MinimaxBestMove(cells, moves) {
 		numbers[1][0], numbers[1][1], numbers[1][2], numbers[1][3],
 		numbers[2][0], numbers[2][1], numbers[2][2], numbers[2][3],
 		numbers[3][0], numbers[3][1], numbers[3][2], numbers[3][3],
-		moves, 0);
+		moves);
 	if(move == 0) console.log('Move: UP');
 	if(move == 1) console.log('Move: DOWN');
 	if(move == 2) console.log('Move: LEFT');
