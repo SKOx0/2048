@@ -11,7 +11,7 @@ function TileToNumber(tile) {
 }
 
 function JS_MinimaxBestMove(cells) {
-	var moves = 5;
+	var moves = 6;
 	var map = { 0: 0, 1: 2, 2: 3, 3: 1};
 	var args = [
 	'number', 'number', 'number', 'number',
