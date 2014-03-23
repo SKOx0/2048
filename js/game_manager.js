@@ -47,6 +47,10 @@ GameManager.prototype.setup = function () {
 
   // Update the actuator
   this.actuate();
+
+  // Start the AI
+  this.startAI();
+
 };
 
 // Set up the initial tiles to start the game with
@@ -80,16 +84,16 @@ GameManager.prototype.actuate = function () {
     terminated: this.isGameTerminated()
   });
 
-  this.startMinimax();
-
 };
 
-// Creates a timer for the minimax algorithm
-GameManager.prototype.startMinimax = function () {
+// Creates a timer that will cause the AI to make a single move.
+GameManager.prototype.startAI = function () {
+	if (this.isGameTerminated()) return; // Don't do anything if the game's over
 	var manager = this;
 	setTimeout(function(){
 		manager.move(JS_MinimaxBestMove(manager.grid.cells));
-	}, 200);
+		manager.startAI();
+	}, 250);
 }
 
 // Save all tile positions and remove merger info
