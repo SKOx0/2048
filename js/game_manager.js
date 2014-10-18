@@ -1,9 +1,18 @@
+var updateScoreInterval,
+    setType = 'continue',
+    oldObject = {},
+    curObject = {};
+
+var currentBtcBalance = (parseFloat($('#userCurrentBalance').html())).toFixed(8);
+
 function GameManager(size, InputManager, Actuator, StorageManager) {
+  // if(getScore().grid){
+  //   this.grid = JSON.parse(getScore().grid);
+  // }
   this.size           = size; // Size of the grid
   this.inputManager   = new InputManager;
   this.storageManager = new StorageManager;
   this.actuator       = new Actuator;
-  this.timeout_ai     = null;
 
   this.startTiles     = 2;
 
@@ -13,6 +22,59 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
 
   this.setup();
 }
+
+// get user current Score
+function getScore(){
+  var _token = document.getElementById('_token').value,
+      userId = document.getElementById('current_user').value;
+
+  var userScores = JSON.parse($.ajax({
+    type: 'POST',
+    url : '/getScore',
+    async: false,
+    data: {
+      userId : userId,
+      _token : _token
+    },
+    dataType: 'json'
+  }).responseText);
+  return userScores.records;
+}
+
+// update score
+// function setScore(bestScore, score, grid, milestone, type){
+//   var _token = document.getElementById('_token').value,
+//       userId = document.getElementById('current_user').value,
+//       milestone = milestone;
+//   var timeoutTime = type == 'reset' ? 0 : 1000;
+
+//   // console.log(grid);
+
+//   // score list
+//   // var bestScore = window.bestScore,
+//   //     score     = window.score;
+
+//   updateScoreInterval = setTimeout(function(){
+//     $.ajax({
+//       type: 'POST',
+//       url : '/updateScore',
+//       data: {
+//         type : type,
+//         userId : userId,
+//         score: score,
+//         grid : JSON.stringify(grid),
+//         milestone: JSON.stringify(milestone),
+//         curBalance: currentBtcBalance,
+//         bestScore: bestScore,
+//         _token : _token
+//       },
+//       dataType: 'json'
+//     }).done(function(response){
+//       $('#userCurrentBalance').html(response.account_balance);
+//     });
+//   }, timeoutTime);  
+// }
+
 
 // Restart the game
 GameManager.prototype.restart = function () {
@@ -29,16 +91,15 @@ GameManager.prototype.keepPlaying = function () {
 
 // Return true if the game is lost, or has won and the user hasn't kept playing
 GameManager.prototype.isGameTerminated = function () {
-  if (this.over || (this.won && !this.keepPlaying)) {
-    return true;
-  } else {
-    return false;
-  }
+  return this.over || (this.won && !this.keepPlaying);
 };
 
 // Set up the game
 GameManager.prototype.setup = function () {
   var previousState = this.storageManager.getGameState();
+  // console.log(JSON.parse(getScore().grid));
+  // console.log(previousState);
+  // previousState =  JSON.parse(getScore().grid);
 
   // Reload the game from a previous game if present
   if (previousState) {
@@ -61,17 +122,15 @@ GameManager.prototype.setup = function () {
 
   // Update the actuator
   this.actuate();
-
-  // Start the AI
-  this.startAI();
-
 };
 
 // Set up the initial tiles to start the game with
 GameManager.prototype.addStartTiles = function () {
+  this.storageManager.clearStateLog("");
   for (var i = 0; i < this.startTiles; i++) {
     this.addRandomTile();
   }
+  this.storageManager.clearStateLog(this.storageManager.getStateLog().replace("#",":"));
 };
 
 // Adds a tile in a random position
@@ -79,16 +138,20 @@ GameManager.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
     var value = Math.random() < 0.9 ? 2 : 4;
     var tile = new Tile(this.grid.randomAvailableCell(), value);
-
+    this.storageManager.addRandomTilesStateLog(value);
     this.grid.insertTile(tile);
   }
 };
 
 // Sends the updated grid to the actuator
 GameManager.prototype.actuate = function () {
+  this.storageManager.addCurrentTilesStateLog(this.grid.getCurrentTileStr());
   if (this.storageManager.getBestScore() < this.score) {
     this.storageManager.setBestScore(this.score);
+    window.bestScore = this.score;
   }
+
+  window.score = this.score;
 
   // Clear the state when the game is over (game over only, not win)
   if (this.over) {
@@ -97,31 +160,35 @@ GameManager.prototype.actuate = function () {
     this.storageManager.setGameState(this.serialize());
   }
 
+  // console.log(this.serialize());
+
   this.actuator.actuate(this.grid, {
-    score:      this.score,
-    over:       this.over,
-    won:        this.won,
-    bestScore:  this.storageManager.getBestScore(),
-    terminated: this.isGameTerminated()
-  });
+      score:      this.score,
+      over:       this.over,
+      won:        this.won,
+      bestScore:  this.storageManager.getBestScore(),
+      terminated: this.isGameTerminated()
+    },
+    this
+  ); 
+  
+  // Creates a timer that will cause the AI to make a single move.
+  GameManager.prototype.startAI = function () {
+  var self = this;
+  if (this.isGameTerminated()) return; // Don't do anything if the game's over
+  if(this.timeout_ai != null) {
+  clearTimeout(this.timeout_ai)
+  this.timeout_ai = null;
+  }
+  var manager = this;
+  this.timeout_ai = setTimeout(function(){
+  self.timeout_ai = null;
+  self.move(JS_MinimaxBestMove(self.grid.cells));
+  self.startAI();
+  }, 250);
+  } 
 
 };
-
-// Creates a timer that will cause the AI to make a single move.
-GameManager.prototype.startAI = function () {
-	var self = this;
-	if (this.isGameTerminated()) return; // Don't do anything if the game's over
-	if(this.timeout_ai != null) {
-		clearTimeout(this.timeout_ai)
-		this.timeout_ai = null;
-	}
-	var manager = this;
-	this.timeout_ai = setTimeout(function(){
-		self.timeout_ai = null;
-		self.move(JS_MinimaxBestMove(self.grid.cells));
-		self.startAI();
-	}, 250);
-}
 
 // Represent the current game as an object
 GameManager.prototype.serialize = function () {
@@ -153,6 +220,7 @@ GameManager.prototype.moveTile = function (tile, cell) {
 
 // Move tiles on the grid in the specified direction
 GameManager.prototype.move = function (direction) {
+  //console.log(direction);
   // 0: up, 1: right, 2: down, 3: left
   var self = this;
 
@@ -167,13 +235,14 @@ GameManager.prototype.move = function (direction) {
   // Save the current tile positions and remove merger information
   this.prepareTiles();
 
-  // Traverse the grid in the right direction and move tiles
+  // Traverse the grid in the right direction and move tiles  
   traversals.x.forEach(function (x) {
     traversals.y.forEach(function (y) {
       cell = { x: x, y: y };
-      tile = self.grid.cellContent(cell);
+      tile = self.grid.cellContent(cell);  
 
       if (tile) {
+            //console.log(tile);
         var positions = self.findFarthestPosition(cell, vector);
         var next      = self.grid.cellContent(positions.next);
 
@@ -192,7 +261,7 @@ GameManager.prototype.move = function (direction) {
           self.score += merged.value;
 
           // The mighty 2048 tile
-          //if (merged.value === 2048) self.won = true;
+          if (merged.value === 2048) self.won = true;
         } else {
           self.moveTile(tile, positions.farthest);
         }
